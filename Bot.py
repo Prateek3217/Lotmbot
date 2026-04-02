@@ -161,26 +161,31 @@ async def regress_sequence_ones(pathway: str, guild: discord.Guild):
             if member:
                 await assign_sequence_role(member, pathway, 2)
 
+# ====================== HTTP PING SERVER (Render compatible) ======================
+async def ping_handler(request):
+    return web.Response(text="OK - LOTM Beyonder Bot is alive!")
+
+async def start_http_server():
+    port = int(os.getenv("PORT", 8080))
+    app = web.Application()
+    app.router.add_get('/ping', ping_handler)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    await site.start()
+    print(f"✅ HTTP ping server started on port {port}")
+
 # ====================== BOT EVENTS ======================
 @bot.event
 async def on_ready():
     await init_db()
-    print(f"✅ {bot.user} — v4.0 loaded with XP Boost & Render ping!")
+    print(f"✅ {bot.user} — v4.1 loaded successfully!")
     asyncio.create_task(start_http_server())
     try:
         synced = await bot.tree.sync()
         print(f"🔄 Synced {len(synced)} slash commands")
     except Exception as e:
-        print(e)
-
-async def start_http_server():
-    app = web.Application()
-    app.router.add_get('/ping', lambda r: web.Response(text="OK - LOTM Beyonder Bot is alive!"))
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', 8080)
-    await site.start()
-    print("✅ HTTP ping server started on port 8080")
+        print(f"Sync error: {e}")
 
 @bot.event
 async def on_message(message):
@@ -194,7 +199,7 @@ async def on_message(message):
         if (now - last) < timedelta(seconds=45):
             return
     
-    # Apply XP Boost Multiplier
+    # Apply XP Boost
     boost = await get_xp_multiplier(message.author)
     base_xp = get_base_xp_gain(data["sequence"])
     xp_gain = int(base_xp * boost)
@@ -270,7 +275,7 @@ async def xp_boost_list(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed)
 
 # ====================== OTHER COMMANDS ======================
-@bot.tree.command(name="setup_roles", description="Admin: Create all Sequence roles")
+@bot.tree.command(name="setup_roles", description="Admin: Create all Sequence roles with pathway colors")
 @app_commands.default_permissions(administrator=True)
 async def setup_roles(interaction: discord.Interaction):
     await interaction.response.defer()
@@ -283,7 +288,7 @@ async def setup_roles(interaction: discord.Interaction):
                 role_name = f"👑 [{pathway}] Sovereign — {seq_name}"
             await get_or_create_role(interaction.guild, role_name, pathway)
             count += 1
-    await interaction.followup.send(f"✅ Created/Verified **{count}** roles with pathway colors!")
+    await interaction.followup.send(f"✅ Created/Verified **{count}** LOTM Sequence roles!", ephemeral=True)
 
 @bot.tree.command(name="choose_pathway", description="Choose your Beyonder Pathway")
 @app_commands.describe(pathway="Your chosen path")
@@ -315,10 +320,19 @@ async def profile(interaction: discord.Interaction):
     embed.add_field(name="Progress", value=f"{progress}/{needed} XP ({percent}%) — resets on level up", inline=False)
     await interaction.response.send_message(embed=embed)
 
-# ====================== RUN BOT ======================
-if __name__ == "__main__":
+# ====================== PROPER ASYNC MAIN ======================
+async def main():
     token = os.getenv("DISCORD_TOKEN")
     if not token:
-        print("❌ DISCORD_TOKEN environment variable not set!")
-    else:
-        bot.run(token)
+        print("❌ ERROR: DISCORD_TOKEN environment variable is not set!")
+        return
+    print("Starting bot...")
+    await bot.start(token)
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("Bot stopped manually.")
+    except Exception as e:
+        print(f"❌ Fatal error: {e}")
