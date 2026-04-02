@@ -331,8 +331,10 @@ async def main():
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+        asyncio.run(main(MTQ4OTMzMTU4ODY4NzcyNDU5NA.GWisEI.5FSAMFs7OnVUKgLokMxTRFhKYqWb27k3g_6z80))
     except KeyboardInterrupt:
         print("Bot stopped manually.")
     except Exception as e:
         print(f"❌ Fatal error: {e}")
+        import asyncio
+asyncio.get_event_loop().run_until_complete(main())
